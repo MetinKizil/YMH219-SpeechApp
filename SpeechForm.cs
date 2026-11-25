@@ -6,6 +6,7 @@ namespace SpeechApp;
 public class SpeechForm : Form
 {
     private readonly TextToSpeechService _tts;
+    private readonly SpeechToTextService _stt = new(Path.Combine(AppContext.BaseDirectory, "model"));
     private readonly TextBox _speakBox = new() { Multiline = true, Dock = DockStyle.Fill, ScrollBars = ScrollBars.Vertical };
     private readonly Button _speakButton = new() { Text = "Başlat", AutoSize = true };
     private readonly Button _pauseButton = new() { Text = "Duraklat", AutoSize = true, Enabled = false };
@@ -49,6 +50,15 @@ public class SpeechForm : Form
         Controls.Add(layout);
         Controls.Add(_statusLabel);
 
+        _stt.TextRecognized += text => _listenBox.AppendText(text + Environment.NewLine);
+        _stt.PartialRecognized += text => _partialLabel.Text = text;
+        _stt.ListeningChanged += RefreshState;
+        _stt.Failed += ShowError;
+        _listenButton.Click += (_, _) => StartListening();
+        _stopListenButton.Click += (_, _) => _stt.Stop();
+        _clearListenButton.Click += (_, _) => { _listenBox.Clear(); _partialLabel.Text = ""; };
+        FormClosed += (_, _) => _stt.Dispose();
+
         _tts = new TextToSpeechService(); // arayüz hazır olduktan sonra oluşturulur
         _tts.StateChanged += RefreshState;
         _tts.Failed += ShowError;
@@ -78,20 +88,37 @@ public class SpeechForm : Form
         }
     }
 
+    private void StartListening()
+    {
+        _tts.Stop(); // hoparlörden çıkan ses mikrofona karışmasın
+        try
+        {
+            _stt.Start();
+        }
+        catch (Exception ex)
+        {
+            ShowError("Dinleme başlatılamadı: " + ex.Message);
+        }
+    }
+
     // Hangi işlemin etkin olduğunu gösterir ve butonları buna göre ayarlar.
     private void RefreshState()
     {
         bool speaking = _tts.State != SpeakState.Idle;
+        bool listening = _stt.IsListening;
 
         _statusLabel.Text = _tts.State switch
         {
             SpeakState.Speaking => "Metin okunuyor...",
             SpeakState.Paused => "Okuma duraklatıldı",
-            _ => "Hazır"
+            _ => listening ? "● Mikrofon dinleniyor..." : "Hazır"
         };
-        _statusLabel.BackColor = speaking ? Color.LightSkyBlue : Color.Gainsboro;
+        _statusLabel.BackColor = speaking ? Color.LightSkyBlue
+                               : listening ? Color.LightCoral : Color.Gainsboro;
 
-        _speakButton.Enabled = !speaking;
+        _speakButton.Enabled = !speaking && !listening;
+        _listenButton.Enabled = !listening;
+        _stopListenButton.Enabled = listening;
         _pauseButton.Enabled = _stopButton.Enabled = speaking;
         _pauseButton.Text = _tts.State == SpeakState.Paused ? "Devam Et" : "Duraklat";
     }
