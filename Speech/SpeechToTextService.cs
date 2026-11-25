@@ -1,4 +1,5 @@
 using System.Text.Json;
+using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using Vosk;
 
@@ -18,6 +19,7 @@ public sealed class SpeechToTextService : IDisposable
     public event Action<string>? TextRecognized;    // tamamlanan cümle
     public event Action<string>? PartialRecognized; // henüz bitmeyen cümle
     public event Action? ListeningChanged;
+    public event Action<int>? LevelChanged;          // gelen sesin seviyesi (0-100)
     public event Action<string>? Failed;
 
     public SpeechToTextService(string modelPath) => _modelPath = modelPath;
@@ -29,6 +31,11 @@ public sealed class SpeechToTextService : IDisposable
 
         if (WaveInEvent.DeviceCount == 0)
             throw new InvalidOperationException("Mikrofon bulunamadı.");
+
+        // Sessize alınmış mikrofon hata vermez, yalnızca sessizlik gönderir.
+        if (IsMicrophoneMuted())
+            throw new InvalidOperationException(
+                "Mikrofon sessize alınmış. Windows Ayarları > Sistem > Ses > Giriş bölümünden sesini açın.");
 
         LoadModel();
 
@@ -53,6 +60,23 @@ public sealed class SpeechToTextService : IDisposable
     // Son cümle, kayıt tamamen durunca OnStopped içinde alınır.
     public void Stop() => _microphone?.StopRecording();
 
+    private static bool IsMicrophoneMuted()
+    {
+        using var devices = new MMDeviceEnumerator();
+        using MMDevice microphone = devices.GetDefaultAudioEndpoint(DataFlow.Capture, Role.Console);
+        return microphone.AudioEndpointVolume.Mute;
+    }
+
+    // 16 bitlik örneklerin en yükseğini 0-100 arasına çevirir.
+    private static int PeakLevel(byte[] buffer, int count)
+    {
+        int peak = 0;
+        for (int i = 0; i + 1 < count; i += 2)
+            peak = Math.Max(peak, Math.Abs((int)BitConverter.ToInt16(buffer, i)));
+
+        return Math.Min(100, peak * 100 / short.MaxValue);
+    }
+
     private void LoadModel()
     {
         if (_model != null) return;
@@ -69,6 +93,8 @@ public sealed class SpeechToTextService : IDisposable
     private void OnData(object? sender, WaveInEventArgs e)
     {
         if (_recognizer == null) return;
+
+        LevelChanged?.Invoke(PeakLevel(e.Buffer, e.BytesRecorded));
 
         if (_recognizer.AcceptWaveform(e.Buffer, e.BytesRecorded))
         {
@@ -89,6 +115,7 @@ public sealed class SpeechToTextService : IDisposable
         Release();
         IsListening = false;
         PartialRecognized?.Invoke("");
+        LevelChanged?.Invoke(0);
         ListeningChanged?.Invoke();
 
         if (e.Exception != null)

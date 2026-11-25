@@ -31,7 +31,8 @@ Mikrofon algılanmazsa: Windows Ayarları > Gizlilik ve güvenlik > Mikrofon bö
 
 - Yazılan metni okutma; Başlat, Duraklat/Devam Et, Durdur ve Temizle
 - Mikrofondan konuşmayı metne aktarma, konuşurken ara sonucu gösterme
-- Etkin işlemi gösteren durum çubuğu
+- Etkin işlemi gösteren durum çubuğu ve mikrofon ses seviyesi göstergesi
+- Mikrofon sessizdeyse veya ses gelmiyorsa uyarı
 - Mikrofon, ses veya model bulunamadığında anlaşılır hata mesajı
 
 ## Sınıf Yapısı

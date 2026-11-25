@@ -17,6 +17,8 @@ public class SpeechForm : Form
     private readonly Button _listenButton = new() { Text = "Dinlemeyi Başlat", AutoSize = true };
     private readonly Button _stopListenButton = new() { Text = "Dinlemeyi Durdur", AutoSize = true, Enabled = false };
     private readonly Button _clearListenButton = new() { Text = "Temizle", AutoSize = true };
+    private readonly ProgressBar _levelBar = new() { Dock = DockStyle.Bottom, Height = 10, Maximum = 100 };
+    private int _silentBlocks; // art arda sessiz gelen ses parçası sayısı
     private readonly Label _partialLabel = new() { Dock = DockStyle.Bottom, Height = 24, ForeColor = Color.DimGray };
 
     private readonly Label _statusLabel = new()
@@ -45,14 +47,16 @@ public class SpeechForm : Form
         GroupBox listen = Section("Sesten Metne", _listenBox,
             _listenButton, _stopListenButton, _clearListenButton);
         listen.Controls.Add(_partialLabel);
+        listen.Controls.Add(_levelBar);
         layout.Controls.Add(listen, 0, 1);
 
         Controls.Add(layout);
         Controls.Add(_statusLabel);
 
         _stt.TextRecognized += text => _listenBox.AppendText(text + Environment.NewLine);
-        _stt.PartialRecognized += text => _partialLabel.Text = text;
+        _stt.PartialRecognized += text => _partialLabel.Text = text.Length > 0 || _silentBlocks < 30 ? text : _partialLabel.Text;
         _stt.ListeningChanged += RefreshState;
+        _stt.LevelChanged += ShowLevel;
         _stt.Failed += ShowError;
         _listenButton.Click += (_, _) => StartListening();
         _stopListenButton.Click += (_, _) => _stt.Stop();
@@ -91,6 +95,7 @@ public class SpeechForm : Form
     private void StartListening()
     {
         _tts.Stop(); // hoparlörden çıkan ses mikrofona karışmasın
+        _silentBlocks = 0;
         try
         {
             _stt.Start();
@@ -99,6 +104,16 @@ public class SpeechForm : Form
         {
             ShowError("Dinleme başlatılamadı: " + ex.Message);
         }
+    }
+
+    private void ShowLevel(int level)
+    {
+        _levelBar.Value = level;
+        _silentBlocks = level < 2 ? _silentBlocks + 1 : 0;
+
+        // her parça yaklaşık 0,1 saniyedir
+        if (_silentBlocks >= 30)
+            _partialLabel.Text = "Mikrofondan ses gelmiyor. Giriş aygıtını ve ses düzeyini kontrol edin.";
     }
 
     // Hangi işlemin etkin olduğunu gösterir ve butonları buna göre ayarlar.
