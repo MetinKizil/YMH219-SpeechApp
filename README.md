@@ -2,8 +2,8 @@
 
 Nesne Tabanlı Programlama (YMH 219) dersi için yazılan metni Türkçe okuyan ve mikrofondan alınan konuşmayı metne çeviren Windows Forms uygulaması.
 
-**Öğrenci:** _(adını soyadını yaz)_
-**Öğrenci No:** _(öğrenci numaranı yaz)_
+**Öğrenci:** Muhammed Metin Kızıl
+**Öğrenci No:** 250541038
 
 ## Kullanılan Teknolojiler / NuGet Paketleri
 
