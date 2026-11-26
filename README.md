@@ -45,7 +45,13 @@ Mikrofon algılanmazsa: Windows Ayarları > Gizlilik ve güvenlik > Mikrofon bö
 
 ## Ekran Görüntüleri
 
-_(en az 2 ekran görüntüsü eklenecek)_
+**Metin okunurken**
+
+![Metin okunurken](screenshots/metinden-sese.png)
+
+**Mikrofon dinlenirken**
+
+![Mikrofon dinlenirken](screenshots/sesten-metne.png)
 
 ## Bilinen Sınırlamalar
 
